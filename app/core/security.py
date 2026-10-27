@@ -49,7 +49,23 @@ async def verify_ci4_signature(
             detail="Invalid X-Timestamp header value",
         )
 
-    # Read raw body
+    content_type = request.headers.get("content-type", "").lower()
+    if "multipart/form-data" in content_type:
+        # PENTING: Jangan panggil request.body() pada multipart/form-data karena
+        # akan menghabiskan stream ASGI Starlette (error: Stream consumed).
+        valid_sigs = [
+            hmac.new(secret.encode("utf-8"), f"{x_timestamp}.multipart".encode("utf-8"), hashlib.sha256).hexdigest(),
+            hmac.new(secret.encode("utf-8"), x_timestamp.encode("utf-8"), hashlib.sha256).hexdigest(),
+        ]
+        if not any(hmac.compare_digest(s, x_ci4_signature) for s in valid_sigs):
+            if settings.REQUIRE_HMAC:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Invalid HMAC signature for multipart request",
+                )
+        return True
+
+    # Read raw body for JSON requests
     body = await request.body()
     expected_sig = generate_hmac_signature(x_timestamp, body, secret)
 
