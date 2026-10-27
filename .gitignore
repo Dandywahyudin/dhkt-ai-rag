@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.env
+
+# Storage
+storage/uploads/*
+!storage/uploads/.gitkeep
+storage/index/*
+!storage/index/.gitkeep
+
+# IDE
+.vscode/
+.idea/
