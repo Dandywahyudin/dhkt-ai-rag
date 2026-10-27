@@ -106,7 +106,8 @@ REQUIRE_HMAC=false
 ### 4. Menjalankan Server FastAPI
 Jalankan perintah:
 ```bash
-python run.py
+python app.py
+# atau: python run.py
 ```
 atau menggunakan uvicorn langsung:
 ```bash
