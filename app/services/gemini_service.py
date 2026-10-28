@@ -152,6 +152,7 @@ class GeminiService:
                 system_instruction=sys_inst,
                 temperature=temperature,
                 tools=tools,
+                max_output_tokens=getattr(settings, "MAX_OUTPUT_TOKENS", 512),
             )
 
             # Round 1: Model evaluates prompt & decides whether to call a tool

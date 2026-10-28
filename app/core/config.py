@@ -47,11 +47,14 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = 6333
     QDRANT_COLLECTION: str = "dhkt_knowledge"
 
-    # RAG Parameters
-    CHUNK_SIZE: int = 800
-    CHUNK_OVERLAP: int = 150
-    TOP_K_RESULTS: int = 4
-    MIN_SIMILARITY_SCORE: float = 0.3
+    # RAG Parameters & Token Optimization (Hemat Kuota Token)
+    CHUNK_SIZE: int = 600
+    CHUNK_OVERLAP: int = 100
+    TOP_K_RESULTS: int = 2
+    MIN_SIMILARITY_SCORE: float = 0.35
+    MAX_OUTPUT_TOKENS: int = 512
+    MAX_HISTORY_MESSAGES: int = 3
+    ENABLE_COMPACT_PROMPT: bool = True
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),

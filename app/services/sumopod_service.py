@@ -178,6 +178,7 @@ class SumopodService:
             "model": self.chat_model,
             "messages": messages,
             "temperature": temperature,
+            "max_tokens": getattr(settings, "MAX_OUTPUT_TOKENS", 512),
         }
         if tools:
             payload["tools"] = tools
@@ -233,6 +234,7 @@ class SumopodService:
                         "model": self.chat_model,
                         "messages": messages,
                         "temperature": temperature,
+                        "max_tokens": getattr(settings, "MAX_OUTPUT_TOKENS", 512),
                     }
 
                     res2 = await client.post(url, headers=self._get_headers(), json=payload_turn2)
