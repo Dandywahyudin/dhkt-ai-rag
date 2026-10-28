@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 from ..core.config import settings
 from ..core.prompts import build_rag_prompt
 from ..schemas.chat import ChatResponse, SourceItem, UserContext
-from .gemini_service import gemini_service
+from .llm_service import get_llm_service
 from .pdf_service import pdf_service
 from .vector_store import get_vector_store
 
@@ -15,7 +15,7 @@ class RAGService:
     def __init__(self):
         self.vector_store = get_vector_store()
         self.pdf_service = pdf_service
-        self.gemini_service = gemini_service
+        self.llm_service = get_llm_service()
 
     async def ingest_pdf(
         self,
@@ -48,7 +48,7 @@ class RAGService:
 
         # 2. Generate embeddings
         texts = [c["text"] for c in chunks]
-        embeddings = await self.gemini_service.generate_embeddings_batch(texts)
+        embeddings = await self.llm_service.generate_embeddings_batch(texts)
 
         # 3. Save into vector store
         # First remove any previous chunks with same document_id (upsert behavior)
@@ -81,10 +81,10 @@ class RAGService:
         user_role = user_dict.get("role")
 
         # 1. Embed user query
-        query_embedding = await self.gemini_service.generate_embedding(message)
+        query_embedding = await self.llm_service.generate_embedding(message)
 
         # 2. Retrieve top matching chunks
-        min_score = settings.MIN_SIMILARITY_SCORE if self.gemini_service.is_configured else 0.0
+        min_score = settings.MIN_SIMILARITY_SCORE if self.llm_service.is_configured else 0.0
         raw_chunks = self.vector_store.search(
             query_embedding=query_embedding,
             top_k=k,
@@ -117,7 +117,7 @@ class RAGService:
             user_context=user_dict,
         )
 
-        reply, tools_called = await self.gemini_service.generate_response(
+        reply, tools_called = await self.llm_service.generate_response(
             prompt=prompt,
             user_context=user_dict,
             enable_tools=settings.ENABLE_TOOL_CALLING,

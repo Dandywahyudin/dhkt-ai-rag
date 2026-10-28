@@ -48,3 +48,17 @@ def get_gemini_tools() -> List[types.Tool]:
         for tool in TOOL_DEFINITIONS
     ]
     return [types.Tool(function_declarations=declarations)]
+
+def get_openai_tools() -> List[Dict[str, Any]]:
+    """Mengubah definisi tool menjadi format OpenAI Function Calling (digunakan oleh Sumopod / DeepSeek)."""
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": tool["name"],
+                "description": tool["description"],
+                "parameters": tool["parameters"],
+            },
+        }
+        for tool in TOOL_DEFINITIONS
+    ]

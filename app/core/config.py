@@ -17,9 +17,18 @@ class Settings(BaseSettings):
     PORT: int = 8000
     DEBUG: bool = True
 
+    # LLM Provider ("sumopod" or "gemini")
+    LLM_PROVIDER: str = "sumopod"
+
+    # Sumopod AI (OpenAI Compatible - https://ai.sumopod.com)
+    SUMOPOD_API_KEY: str = ""
+    SUMOPOD_BASE_URL: str = "https://ai.sumopod.com/v1"
+    SUMOPOD_MODEL: str = "deepseek-v4-flash"
+    SUMOPOD_EMBEDDING_MODEL: str = "text-embedding-3-small"
+
     # Google Gemini API
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_MODEL: str = "gemini-2.0-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
 
     # Security & HMAC (CodeIgniter 4 integration)
