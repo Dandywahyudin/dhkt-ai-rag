@@ -101,6 +101,12 @@ class LocalVectorStore(BaseVectorStore):
 
             if len(self.vectors) == 0:
                 self.vectors = new_vectors
+            elif self.vectors.ndim == 2 and self.vectors.shape[1] != new_vectors.shape[1]:
+                logger.warning(
+                    f"Vector dimension changed from {self.vectors.shape[1]} to {new_vectors.shape[1]}. Resetting vector store index."
+                )
+                self.chunks = list(chunks)
+                self.vectors = new_vectors
             else:
                 self.vectors = np.vstack([self.vectors, new_vectors])
 
@@ -120,6 +126,13 @@ class LocalVectorStore(BaseVectorStore):
                 return []
 
             q_vec = np.array(query_embedding, dtype=np.float32)
+            if self.vectors.ndim == 2 and self.vectors.shape[1] != q_vec.shape[0]:
+                logger.warning(
+                    f"Dimension mismatch in vector search: stored={self.vectors.shape[1]}, query={q_vec.shape[0]}. "
+                    "Dokumen di-index dengan model embedding berbeda. Kembalikan pencarian kosong."
+                )
+                return []
+
             q_norm = np.linalg.norm(q_vec)
             if q_norm > 0:
                 q_vec = q_vec / q_norm
