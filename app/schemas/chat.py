@@ -35,3 +35,4 @@ class ChatResponse(BaseModel):
     reply: str
     sources: List[SourceItem] = Field(default_factory=list)
     tools_used: List[str] = Field(default_factory=list, description="Daftar nama tool internal yang dipanggil oleh AI")
+    form_data: Optional[Dict[str, Any]] = Field(default=None, description="Data form terstruktur yang diekstrak jika ada instruksi pengisian form")

@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 100
     TOP_K_RESULTS: int = 2
     MIN_SIMILARITY_SCORE: float = 0.35
-    MAX_OUTPUT_TOKENS: int = 512
+    MAX_OUTPUT_TOKENS: int = 256
     MAX_HISTORY_MESSAGES: int = 3
     ENABLE_COMPACT_PROMPT: bool = True
 

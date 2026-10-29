@@ -6,7 +6,7 @@ from google.genai import types
 TOOL_DEFINITIONS = [
     {
         "name": "get_my_submission_status",
-        "description": "Mengambil status pengajuan proposal, HKI, permohonan, atau komplain terbaru milik pengguna yang sedang login saat ini.",
+        "description": "Mengambil status permohonan atau laporan layanan terbaru milik pengguna saat ini.",
         "parameters": {
             "type": "object",
             "properties": {},
@@ -14,13 +14,13 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "get_submission_detail",
-        "description": "Mengambil rincian detail suatu pengajuan/laporan spesifik berdasarkan nomor/ID pengajuan (submission_id).",
+        "description": "Mengambil rincian detail suatu permohonan/laporan spesifik berdasarkan nomor/ID.",
         "parameters": {
             "type": "object",
             "properties": {
                 "submission_id": {
                     "type": "string",
-                    "description": "ID atau nomor pengajuan/laporan yang ingin diperiksa, contoh: '12', '104'",
+                    "description": "ID atau nomor permohonan/laporan, contoh: '12', '104'",
                 }
             },
             "required": ["submission_id"],
@@ -28,7 +28,7 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "get_dhkt_summary_stats",
-        "description": "Mengambil ringkasan statistik total pengajuan atau laporan yang ada pada sistem DHKT (khusus admin melihat semua, user melihat miliknya).",
+        "description": "Mengambil ringkasan statistik layanan internal di sistem DHKT.",
         "parameters": {
             "type": "object",
             "properties": {},

@@ -1,14 +1,36 @@
 from typing import Any, Dict, List, Optional
 from .config import settings
 
-SYSTEM_PROMPT = """Anda adalah asisten AI DHKT ITB.
-Tugas: Jawab pertanyaan pengguna berdasarkan dokumen konteks internal yang diberikan.
+SYSTEM_PROMPT = """Anda adalah asisten data & SOP DHKT ITB.
+Tugas: Jawab pertanyaan secara faktual, akurat, dan SANGAT SINGKAT.
 
-PEDOMAN JAWABAN:
-1. Jawab langsung ke inti (to-the-point), padat, jelas, dan profesional. Hindari basa-basi panjang.
-2. Jawab HANYA berdasarkan dokumen yang relevan. Jika tidak ada di dokumen, nyatakan secara ringkas.
-3. Sertakan rujukan dokumen/halaman singkat jika tersedia.
-4. Gunakan poin ringkas (bullet points) jika menjelaskan langkah/syarat.
+ATURAN OUTPUT (WAJIB DIIKUTI):
+1. SANGAT RINGKAS: Maksimal 2–3 kalimat langsung ke inti fakta atau data.
+2. DILARANG KERAS menggunakan kalimat pembuka/salam (contoh dilarang: "Halo!", "Tentu,", "Berdasarkan data...", "Berdasarkan dokumen...", "Berikut adalah...").
+3. DILARANG KERAS menggunakan kalimat penutup/saran (contoh dilarang: "Semoga membantu", "Saran: ajukan ke...", "Ada yang perlu ditanyakan lagi?", "Catatan:").
+4. Langsung jawab fakta atau status data intinya.
+5. Jika data tidak ditemukan, jawab HANYA 1 kalimat: "Data tidak ditemukan dalam sistem."
+6. Jangan mengulang pertanyaan pengguna.
+7. DILARANG KERAS MENGGUNAKAN TANDA BINTANG MARKDOWN (** atau *) untuk penekanan (bold/italic) maupun daftar. Gunakan teks polos (plain text).
+8. DILARANG KERAS MENAMBAHKAN CATATAN KAKI atau disclaimer sumber seperti "*(Sumber:...)*" di dalam teks jawaban. Informasi rujukan sudah dikelola oleh sistem secara terpisah.
+9. JIKA PENGGUNA BERMAKSUD MEMINJAM RUANGAN ATAU MENGISI FORM:
+   - Anda ADALAH bagian dari sistem resmi operasional DHKT ITB. DILARANG KERAS menolak atau menyuruh pengguna "mengajukan melalui kanal/prosedur resmi".
+   - Periksa DATA SISTEM APLIKASI DHKT TERKINI apakah ada benturan jadwal.
+   - Jika tidak ada benturan jadwal, jawab dengan ramah dan lugas bahwa ruangan tersedia pada jadwal yang diminta dan form peminjaman telah disiapkan.
+   - Ekstrak seluruh parameter form peminjaman ke dalam blok JSON di akhir respons:
+   ```json:form_data
+   {
+     "form_type": "room_booking",
+     "activity_name": "...",
+     "place_name": "...",
+     "room_name": "...",
+     "date_range": "DD-MM-YYYY HH:mm - DD-MM-YYYY HH:mm",
+     "participant_count": 0,
+     "unit": "...",
+     "description": "...",
+     "category": "internal_dhkt"
+   }
+   ```
 """
 
 def format_context_chunks(chunks: List[Dict[str, Any]]) -> str:
@@ -36,11 +58,25 @@ def build_rag_prompt(
     context_text = format_context_chunks(chunks)
 
     user_info = ""
+    module_guardrail = ""
     if user_context:
         role = user_context.get("role", "Umum")
         unit = user_context.get("unit", "-")
-        user_info = f"User: {role} ({unit})\n"
-
+        active_mod = user_context.get("active_module")
+        user_info = f"User: {role} ({unit})"
+        if active_mod:
+            user_info += f" | Modul Aktif: {active_mod}\n"
+            if active_mod not in ["Semua Modul (Global)", "global", "*"]:
+                module_guardrail = (
+                    f"\nBATASAN TOPIK MODUL ({active_mod.upper()}):\n"
+                    f"- Pengguna saat ini sedang berada di modul '{active_mod}'.\n"
+                    f"- Jawablah HANYA pertanyaan yang relevan dengan modul '{active_mod}' dan dokumen SOP terkait.\n"
+                    f"- Jika pertanyaan pengguna di luar modul '{active_mod}' (misal menanyakan modul lain), "
+                    f"TOLAK secara sopan dan singkat: \"Maaf, saat ini Anda berada di modul {active_mod}. "
+                    f"Pertanyaan tersebut berkaitan dengan modul lain, silakan buka modul terkait.\"\n"
+                )
+        else:
+            user_info += "\n"
     history_text = ""
     if history:
         history_lines = []
@@ -54,10 +90,14 @@ def build_rag_prompt(
         if history_lines:
             history_text = "Riwayat:\n" + "\n".join(history_lines) + "\n\n"
 
-    prompt = f"""{user_info}Konteks Dokumen:
+    live_data = (user_context.get("live_data") or "").strip() if user_context else ""
+    live_data_text = f"DATA SISTEM APLIKASI DHKT TERKINI:\n{live_data}\n\n" if live_data else ""
+
+    prompt = f"""{user_info}{module_guardrail}
+{live_data_text}Konteks Dokumen:
 {context_text}
 
 {history_text}Pertanyaan: {query}
-Jawaban:"""
+Jawaban Singkat & Faktual:"""
 
     return prompt

@@ -116,8 +116,23 @@ def test_fastapi_endpoints():
     chat_json = res_chat.json()
     assert chat_json["status"] == "success"
     assert "reply" in chat_json
+    assert "**" not in chat_json["reply"], "Output chat tidak boleh mengandung tanda bintang (**)"
     assert len(chat_json["sources"]) > 0
-    print("Chat endpoint verified. Top source score:", chat_json["sources"][0]["score"])
+    print("Chat endpoint verified. Clean reply (no asterisks). Top source score:", chat_json["sources"][0]["score"])
+
+    # 4b. Form Autofill Detection in Chat
+    form_payload = {
+        "session_id": "test-form-01",
+        "message": "Tolong buatkan peminjaman Ruang Miting 08 di STP Gedebage untuk Jumat berkah 30-10-2026 jam 07:00-16:00 dengan 13 orang dari unit DKST Sarpras",
+        "user_context": {"id": 1, "role": "staff", "unit": "DHKT"},
+        "history": [],
+    }
+    res_form = client.post("/v1/chat", json=form_payload)
+    assert res_form.status_code == 200
+    form_json = res_form.json()
+    assert form_json.get("form_data") is not None, "form_data harus diekstrak untuk perintah peminjaman"
+    assert form_json["form_data"].get("participant_count") == 13
+    print("Chat Form Autofill verified: extracted form_data successfully.")
 
     # 5. Delete Document
     res_delete = client.delete("/v1/documents/doc_test_100")

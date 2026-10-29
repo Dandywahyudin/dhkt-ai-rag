@@ -137,7 +137,7 @@ class SumopodService:
                 sim_data = await ci4_tool_client.execute_tool("get_dhkt_summary_stats", {}, user_context)
                 reply = (
                     f"Berdasarkan data statistik dari sistem CodeIgniter, "
-                    f"total pengajuan yang tercatat saat ini berjumlah: **{sim_data.get('total', 42)} pengajuan**."
+                    f"total pengajuan yang tercatat saat ini berjumlah: {sim_data.get('total', 42)} pengajuan."
                 )
                 return reply, tools_called
 
@@ -147,8 +147,8 @@ class SumopodService:
                 sub = sim_data.get("submission", {})
                 reply = (
                     f"Berdasarkan pengecekan data internal ke sistem CodeIgniter, pengajuan Anda "
-                    f"(ID: #{sub.get('id', 101)}) bertajuk **'{sub.get('title', 'Pengajuan')}'** "
-                    f"saat ini berstatus: **{sub.get('status', 'DALAM_PROSES')}** "
+                    f"(ID: #{sub.get('id', 101)}) bertajuk '{sub.get('title', 'Pengajuan')}' "
+                    f"saat ini berstatus: {sub.get('status', 'DALAM_PROSES')} "
                     f"(terakhir diperbarui: {sub.get('updated_at', '-')})."
                 )
                 return reply, tools_called
@@ -172,7 +172,8 @@ class SumopodService:
             {"role": "user", "content": prompt},
         ]
 
-        tools = get_openai_tools() if (enable_tools and settings.ENABLE_TOOL_CALLING) else None
+        has_live_data = bool(user_context and user_context.get("live_data"))
+        tools = get_openai_tools() if (enable_tools and settings.ENABLE_TOOL_CALLING and not has_live_data) else None
 
         payload: Dict[str, Any] = {
             "model": self.chat_model,

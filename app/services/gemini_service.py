@@ -117,7 +117,7 @@ class GeminiService:
                 sim_data = await ci4_tool_client.execute_tool("get_dhkt_summary_stats", {}, user_context)
                 reply = (
                     f"Berdasarkan data statistik dari sistem CodeIgniter, "
-                    f"total pengajuan yang tercatat saat ini berjumlah: **{sim_data.get('total', 42)} pengajuan**."
+                    f"total pengajuan yang tercatat saat ini berjumlah: {sim_data.get('total', 42)} pengajuan."
                 )
                 return reply, tools_called
 
@@ -127,8 +127,8 @@ class GeminiService:
                 sub = sim_data.get("submission", {})
                 reply = (
                     f"Berdasarkan pengecekan data internal ke sistem CodeIgniter, pengajuan Anda "
-                    f"(ID: #{sub.get('id', 101)}) bertajuk **'{sub.get('title', 'Pengajuan')}'** "
-                    f"saat ini berstatus: **{sub.get('status', 'DALAM_PROSES')}** "
+                    f"(ID: #{sub.get('id', 101)}) bertajuk '{sub.get('title', 'Pengajuan')}' "
+                    f"saat ini berstatus: {sub.get('status', 'DALAM_PROSES')} "
                     f"(terakhir diperbarui: {sub.get('updated_at', '-')})."
                 )
                 return reply, tools_called
@@ -146,7 +146,8 @@ class GeminiService:
             from google.genai import types
 
             sys_inst = system_instruction or SYSTEM_PROMPT
-            tools = get_gemini_tools() if (enable_tools and settings.ENABLE_TOOL_CALLING) else None
+            has_live_data = bool(user_context and user_context.get("live_data"))
+            tools = get_gemini_tools() if (enable_tools and settings.ENABLE_TOOL_CALLING and not has_live_data) else None
 
             config = types.GenerateContentConfig(
                 system_instruction=sys_inst,
