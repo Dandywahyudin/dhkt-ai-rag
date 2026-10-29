@@ -236,12 +236,15 @@ class SumopodService:
                     res2 = await client.post(url, headers=self._get_headers(), json=payload_turn2)
                     if res2.status_code == 200:
                         data2 = res2.json()
-                        reply2 = data2.get("choices", [{}])[0].get("message", {}).get("content", "")
-                        return reply2.strip() if reply2 else "Panggilan tool selesai dijalankan.", tools_called, tool_data
+                        msg2 = data2.get("choices", [{}])[0].get("message", {})
+                        reply2 = msg2.get("content") or msg2.get("reasoning_content") or ""
+                        return reply2.strip() if reply2 else "Draf form berhasil disiapkan.", tools_called, tool_data
+                    else:
+                        logger.warning(f"Sumopod round 2 returned HTTP {res2.status_code}: {res2.text[:200]}")
+                        return "Draf pengajuan form telah berhasil disiapkan.", tools_called, tool_data
 
-                reply_content = choice_msg.get("content", "")
+                reply_content = choice_msg.get("content") or choice_msg.get("reasoning_content") or ""
                 return reply_content.strip() if reply_content else "Maaf, tidak ada teks jawaban yang dikembalikan.", tools_called, None
-
         except Exception as e:
             logger.error(f"Error calling Sumopod DeepSeek chat/completions: {e}")
             return f"Terjadi kendala saat menghubungi Sumopod API: {str(e)}", tools_called, None
