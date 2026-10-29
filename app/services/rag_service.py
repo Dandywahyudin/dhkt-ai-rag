@@ -190,14 +190,14 @@ class RAGService:
             history=history,
             user_context=user_dict,
         )
-        reply, tools_called = await self.llm_service.generate_response(
+        reply, tools_called, tool_data = await self.llm_service.generate_response(
             prompt=prompt,
             user_context=user_dict,
             enable_tools=settings.ENABLE_TOOL_CALLING,
         )
 
         # 5. Ekstraksi form_data dan sanitasi output (Hapus ** dan footnote sumber)
-        form_data = None
+        form_data = tool_data
         json_match = re.search(r'```(?:json:form_data|json)?\s*(\{.*?\})\s*```', reply, re.DOTALL)
         if json_match:
             try:

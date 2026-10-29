@@ -102,12 +102,13 @@ class GeminiService:
         temperature: float = 0.2,
         enable_tools: bool = True,
         user_context: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[str, List[str]]:
+    ) -> Tuple[str, List[str], Optional[Dict[str, Any]]]:
         """
         Generate chat answer using Gemini LLM with integrated Tool Calling support.
-        Returns: (reply_text, list_of_tools_called)
+        Returns: (reply_text, list_of_tools_called, extracted_tool_data)
         """
         tools_called: List[str] = []
+        tool_data: Optional[Dict[str, Any]] = None
 
         # Handler saat API Key belum diisi (Offline / Development Mock)
         if not self.is_configured:
@@ -119,7 +120,7 @@ class GeminiService:
                     f"Berdasarkan data statistik dari sistem CodeIgniter, "
                     f"total pengajuan yang tercatat saat ini berjumlah: {sim_data.get('total', 42)} pengajuan."
                 )
-                return reply, tools_called
+                return reply, tools_called, None
 
             elif enable_tools and any(kw in prompt_lower for kw in ["status", "pengajuan", "laporan", "tiket", "submission"]):
                 tools_called.append("get_my_submission_status")
@@ -131,17 +132,13 @@ class GeminiService:
                     f"saat ini berstatus: {sub.get('status', 'DALAM_PROSES')} "
                     f"(terakhir diperbarui: {sub.get('updated_at', '-')})."
                 )
-                return reply, tools_called
+                return reply, tools_called, None
 
             return (
-                "⚠️ **Perhatian**: Kunci `GEMINI_API_KEY` belum dikonfigurasi di file `.env`.\n\n"
-                "Silakan ikuti langkah berikut untuk mengaktifkan AI:\n"
-                "1. Dapatkan API Key gratis di [Google AI Studio](https://aistudio.google.com/)\n"
-                "2. Masukkan ke file `.env`: `GEMINI_API_KEY=AIzaSy...`\n"
-                "3. Restart server FastAPI ini.",
+                "Perhatian: Kunci GEMINI_API_KEY belum dikonfigurasi di file .env.",
                 tools_called,
+                None,
             )
-
         try:
             from google.genai import types
 
@@ -170,8 +167,9 @@ class GeminiService:
                     tool_name = fc.name
                     tool_args = dict(fc.args) if fc.args else {}
                     tools_called.append(tool_name)
+                    if tool_name.startswith("draft_"):
+                        tool_data = {"form_type": tool_name, **tool_args}
                     logger.info(f"Gemini triggered tool call: '{tool_name}' with arguments: {tool_args}")
-
                     # Eksekusi fungsi ke CodeIgniter 4
                     tool_result = await ci4_tool_client.execute_tool(
                         tool_name=tool_name,
@@ -198,14 +196,14 @@ class GeminiService:
                     config=config,
                 )
                 reply = final_response.text.strip() if final_response.text else "Panggilan tool selesai dijalankan."
-                return reply, tools_called
+                return reply, tools_called, tool_data
 
             reply = response.text.strip() if response.text else "Maaf, tidak ada tanggapan teks yang dihasilkan."
-            return reply, tools_called
+            return reply, tools_called, None
 
         except Exception as e:
             logger.error(f"Error calling Gemini generate_content: {e}")
-            return f"Terjadi kendala saat menghubungi Gemini API: {str(e)}", tools_called
+            return f"Terjadi kendala saat menghubungi Gemini API: {str(e)}", tools_called, None
 
 
 gemini_service = GeminiService()

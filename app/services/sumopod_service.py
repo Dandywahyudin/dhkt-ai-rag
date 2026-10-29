@@ -122,12 +122,13 @@ class SumopodService:
         temperature: float = 0.2,
         enable_tools: bool = True,
         user_context: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[str, List[str]]:
+    ) -> Tuple[str, List[str], Optional[Dict[str, Any]]]:
         """
         Generate chat answer using Sumopod DeepSeek LLM with Tool Calling support.
-        Returns: (reply_text, list_of_tools_called)
+        Returns: (reply_text, list_of_tools_called, extracted_tool_data)
         """
         tools_called: List[str] = []
+        tool_data: Optional[Dict[str, Any]] = None
 
         # Handler saat API Key belum diisi (Offline / Development Mock)
         if not self.is_configured:
@@ -139,7 +140,7 @@ class SumopodService:
                     f"Berdasarkan data statistik dari sistem CodeIgniter, "
                     f"total pengajuan yang tercatat saat ini berjumlah: {sim_data.get('total', 42)} pengajuan."
                 )
-                return reply, tools_called
+                return reply, tools_called, None
 
             elif enable_tools and any(kw in prompt_lower for kw in ["status", "pengajuan", "laporan", "tiket", "submission"]):
                 tools_called.append("get_my_submission_status")
@@ -151,19 +152,13 @@ class SumopodService:
                     f"saat ini berstatus: {sub.get('status', 'DALAM_PROSES')} "
                     f"(terakhir diperbarui: {sub.get('updated_at', '-')})."
                 )
-                return reply, tools_called
+                return reply, tools_called, None
 
             return (
-                "⚠️ **Perhatian**: Kunci `SUMOPOD_API_KEY` belum dikonfigurasi di file `.env`.\n\n"
-                "Silakan ikuti langkah berikut untuk mengaktifkan AI Sumopod & DeepSeek Flash:\n"
-                "1. Buka dashboard [Sumopod AI](https://ai.sumopod.com) -> Tab **AI** -> **API Keys** -> Buat Key.\n"
-                "2. Masukkan ke file `.env`:\n"
-                "   `SUMOPOD_API_KEY=sk-...`\n"
-                "   `SUMOPOD_MODEL=deepseek-v4-flash`\n"
-                "3. Restart server ini.",
+                "Perhatian: Kunci SUMOPOD_API_KEY belum dikonfigurasi di file .env.",
                 tools_called,
+                None,
             )
-
         url = f"{self.base_url}/chat/completions"
         sys_inst = system_instruction or SYSTEM_PROMPT
 
@@ -215,9 +210,9 @@ class SumopodService:
                             t_args = {}
 
                         tools_called.append(t_name)
+                        if t_name.startswith("draft_"):
+                            tool_data = {"form_type": t_name, **t_args}
                         logger.info(f"Sumopod DeepSeek triggered tool call: '{t_name}' with args: {t_args}")
-
-                        # Eksekusi fungsi ke CodeIgniter 4
                         tool_result = await ci4_tool_client.execute_tool(
                             tool_name=t_name,
                             arguments=t_args,
@@ -242,14 +237,13 @@ class SumopodService:
                     if res2.status_code == 200:
                         data2 = res2.json()
                         reply2 = data2.get("choices", [{}])[0].get("message", {}).get("content", "")
-                        return reply2.strip() if reply2 else "Panggilan tool selesai dijalankan.", tools_called
+                        return reply2.strip() if reply2 else "Panggilan tool selesai dijalankan.", tools_called, tool_data
 
                 reply_content = choice_msg.get("content", "")
-                return reply_content.strip() if reply_content else "Maaf, tidak ada teks jawaban yang dikembalikan.", tools_called
+                return reply_content.strip() if reply_content else "Maaf, tidak ada teks jawaban yang dikembalikan.", tools_called, None
 
         except Exception as e:
             logger.error(f"Error calling Sumopod DeepSeek chat/completions: {e}")
-            return f"Terjadi kendala saat menghubungi Sumopod API: {str(e)}", tools_called
-
+            return f"Terjadi kendala saat menghubungi Sumopod API: {str(e)}", tools_called, None
 
 sumopod_service = SumopodService()

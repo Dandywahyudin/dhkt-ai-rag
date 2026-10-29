@@ -86,7 +86,14 @@ class Ci4ToolClient:
         """
         Fallback simulasi lokal ketika server CodeIgniter belum aktif / sedang dalam tahap pengujian.
         """
-        if tool_name == "get_my_submission_status":
+        if tool_name.startswith("draft_"):
+            return {
+                "status": "draft_prepared",
+                "tool": tool_name,
+                "data": arguments,
+                "message": f"Draf {tool_name} berhasil disiapkan.",
+            }
+        elif tool_name == "get_my_submission_status":
             return {
                 "submission": {
                     "id": 101,
