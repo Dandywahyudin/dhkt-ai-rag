@@ -35,10 +35,17 @@ def extract_room_booking_heuristics(message: str) -> Optional[Dict[str, Any]]:
     Ekstraksi data form peminjaman ruangan dari teks kalimat pengguna
     jika terdeteksi adanya perintah input/booking ruangan.
     """
-    msg_lower = message.lower()
-    if not any(k in msg_lower for k in ["pinjam", "minjam", "booking", "reservasi", "isi form", "buat jadwal", "ajukan"]):
+    # Hanya periksa kalimat user di paragraf pertama, abaikan data sistem/prompt injeksi
+    user_query = message.split("\n\n")[0].strip()
+    msg_lower = user_query.lower()
+
+    # Jika kalimat berupa pertanyaan informasi (inquiry) -> bukan aksi form
+    if any(k in msg_lower for k in ["apakah", "siapa", "kapan", "cek", "jadwal", "ada yang", "daftar", "status", "terlambat"]):
         return None
 
+    # Wajib mengandung kata aksi peminjaman
+    if not any(k in msg_lower for k in ["pinjam", "minjam", "booking", "reservasi", "sewa", "pesan"]):
+        return None
     form: Dict[str, Any] = {
         "form_type": "room_booking",
         "category": "internal_dhkt",
@@ -52,10 +59,13 @@ def extract_room_booking_heuristics(message: str) -> Optional[Dict[str, Any]]:
         form["activity_name"] = "Peminjaman Ruangan"
 
     # Ruangan & Tempat
-    room_match = re.search(r'(?:ruang(?:an)?|meeting|miting|aula)\s+([a-zA-Z0-9_\-]+(?:\s+[a-zA-Z0-9_\-]+){0,2})', message, re.IGNORECASE)
+    non_room_words = {"besok", "hari", "lusa", "kemarin", "nanti", "apa", "mana", "siapa", "kosong", "rusak", "ada", "yang", "terpakai", "terisi", "aktif"}
+    room_match = re.search(r'(?:ruang(?:an)?|meeting|miting|aula)\s+([a-zA-Z0-9_\-]+(?:\s+[0-9]+)?)', user_query, re.IGNORECASE)
     if room_match:
-        raw_room = room_match.group(0).strip()
-        form["room_name"] = raw_room if raw_room.lower().startswith("ruang") else "Ruang " + raw_room
+        word = room_match.group(1).lower()
+        if word not in non_room_words:
+            raw_room = room_match.group(0).strip()
+            form["room_name"] = raw_room if raw_room.lower().startswith("ruang") else "Ruang " + raw_room
     if "gedebage" in msg_lower or "stp" in msg_lower:
         form["place_name"] = "STP Gedebage"
     elif "crcs" in msg_lower:
