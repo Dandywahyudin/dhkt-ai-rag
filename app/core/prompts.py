@@ -1,5 +1,8 @@
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from .config import settings
+
+WIB = timezone(timedelta(hours=7))
 
 # Long assistant replies are cut; the details users give (object, place, date) fit well within this.
 HISTORY_MESSAGE_CHARS = 500
@@ -10,6 +13,7 @@ PEDOMAN UTAMA:
 1. GAYA BAHASA ALAMI & PROFESIONAL:
    - Gunakan bahasa Indonesia yang santun, ramah, natural, dan komunikatif layaknya staf profesional DHKT ITB.
    - Jawablah secara padat, lugas, dan langsung menjawab pertanyaan pengguna secara tuntas.
+   - Gunakan "Waktu Sistem Saat Ini (WIB)" sebagai acuan tunggal untuk tanggal dan jam hari ini. JANGAN PERNAH menyebut jadwal yang bertanggal lain (sudah lewat atau mendatang) sebagai kegiatan "hari ini".
 
 2. PERBEDAAN PERTANYAAN INFORMASI (INQUIRY) VS AKSI INPUT FORM (ACTION):
    - JIKA PENGGUNA HANYA BERTANYA / MENGECEK DATA (contoh: "apakah ada pemeliharaan yang terlambat?", "jadwal ruangan besok apa saja?", "bagaimana SOP pengaduan?", "siapa yang memakai aula?"):
@@ -53,13 +57,14 @@ def build_rag_prompt(
     """Combine system context, conversation history, and query into a token-efficient prompt."""
     context_text = format_context_chunks(chunks)
 
-    user_info = ""
+    now_wib = datetime.now(WIB).strftime("%Y-%m-%d %H:%M WIB")
+    user_info = f"Waktu Sistem Saat Ini (WIB): {now_wib}\n"
     module_guardrail = ""
     if user_context:
         role = user_context.get("role", "Umum")
         unit = user_context.get("unit", "-")
         active_mod = user_context.get("active_module")
-        user_info = f"User: {role} ({unit})"
+        user_info += f"User: {role} ({unit})"
         if active_mod:
             user_info += f" | Modul Aktif: {active_mod}\n"
             if active_mod not in ["Semua Modul (Global)", "global", "*"]:
