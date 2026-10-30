@@ -1,8 +1,10 @@
 from typing import Any, Dict, List
 from google.genai import types
 
-# Definisi seluruh tools yang terdaftar dan dapat dipanggil oleh Gemini.
-# Setiap nama tool di sini berkorespondensi langsung dengan method di AiToolsController.php CodeIgniter 4.
+# Definisi seluruh tools yang terdaftar dan dapat dipanggil oleh LLM.
+# Tool draft_* tidak dieksekusi di CodeIgniter: argumennya dikembalikan sebagai `tool_call` dan
+# AssistantFormTools.php di CI4 mengubahnya menjadi link form terisi. Nama argumen harus sama dengan
+# yang dibaca AssistantFormTools. Tool get_* berkorespondensi dengan endpoint internal CI4.
 TOOL_DEFINITIONS = [
     # 1. Modul Peminjaman Ruangan
     {
@@ -11,16 +13,19 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "room_name": {"type": "string", "description": "Nama ruangan, misal: Ruang Meeting 08, Aula Barat"},
+                "activity_name": {"type": "string", "description": "Nama kegiatan atau acara"},
+                "description": {"type": "string", "description": "Deskripsi singkat kegiatan"},
+                "category": {"type": "string", "enum": ["internal_dhkt", "eksternal"], "description": "Kategori peminjam"},
+                "unit": {"type": "string", "description": "Unit atau bagian peminjam"},
+                "participant_count": {"type": "integer", "description": "Jumlah peserta"},
                 "place_name": {"type": "string", "description": "Gedung/Lokasi, misal: STP Gedebage, CRCS"},
+                "room_name": {"type": "string", "description": "Nama ruangan, misal: Ruang Meeting 08, Aula Barat"},
                 "date": {"type": "string", "description": "Tanggal format YYYY-MM-DD"},
                 "start_time": {"type": "string", "description": "Jam mulai format HH:mm"},
                 "end_time": {"type": "string", "description": "Jam selesai format HH:mm"},
-                "activity_name": {"type": "string", "description": "Nama kegiatan atau acara"},
-                "participant_count": {"type": "integer", "description": "Jumlah peserta"},
-                "unit": {"type": "string", "description": "Unit atau bagian peminjam"},
+                "duration_minutes": {"type": "integer", "description": "Durasi dalam menit bila jam selesai tidak disebut"},
             },
-            "required": ["room_name"],
+            "required": [],
         },
     },
     # 2. Modul Pengaduan Fasilitas
@@ -40,16 +45,20 @@ TOOL_DEFINITIONS = [
     # 3. Modul Pemeliharaan Fasilitas / SPK
     {
         "name": "draft_maintenance_spk",
-        "description": "Dipanggil saat membuat order pemeliharaan, jadwal servis rutin, atau perbaikan aset.",
+        "description": "Dipanggil saat membuat order/jadwal pemeliharaan, servis rutin, atau perbaikan aset, fasilitas, atau ruangan.",
         "parameters": {
             "type": "object",
             "properties": {
-                "title": {"type": "string", "description": "Nama pekerjaan SPK"},
-                "target_facility": {"type": "string", "description": "Aset atau fasilitas yang akan diservis"},
-                "due_date": {"type": "string", "description": "Tenggat pengerjaan format YYYY-MM-DD"},
-                "executor": {"type": "string", "description": "Nama teknisi atau vendor pelaksana"},
+                "type": {"type": "string", "enum": ["pemeliharaan", "perbaikan"], "description": "pemeliharaan = terjadwal/rutin, perbaikan = kerusakan"},
+                "title": {"type": "string", "description": "Nama pekerjaan, misal: Servis AC rutin"},
+                "description": {"type": "string", "description": "Rincian pekerjaan atau uraian kerusakan, termasuk lokasi/gedung"},
+                "frequency": {"type": "string", "enum": ["once", "monthly", "quarterly", "yearly"], "description": "Pengulangan untuk pemeliharaan: sekali, bulanan, triwulanan, tahunan"},
+                "target": {"type": "string", "enum": ["asset", "facility", "room"], "description": "Kategori objek: aset inventaris, fasilitas gedung (AC, lift, genset), atau ruangan"},
+                "object_name": {"type": "string", "description": "Nama aset/fasilitas/ruangan yang dikerjakan"},
+                "due_date": {"type": "string", "description": "Tanggal target format YYYY-MM-DD"},
+                "planned_start": {"type": "string", "description": "Rencana mulai format YYYY-MM-DD"},
             },
-            "required": ["title"],
+            "required": [],
         },
     },
     # 4. Modul Peminjaman Barang / Aset
@@ -59,13 +68,14 @@ TOOL_DEFINITIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "asset_name": {"type": "string", "description": "Nama aset atau barang yang dipinjam"},
-                "quantity": {"type": "integer", "description": "Jumlah barang"},
-                "loan_date": {"type": "string", "description": "Tanggal peminjaman"},
-                "return_date": {"type": "string", "description": "Tanggal perkiraan kembali"},
-                "unit": {"type": "string", "description": "Unit peminjam"},
+                "purpose": {"type": "string", "description": "Tujuan peminjaman"},
+                "items": {"type": "array", "items": {"type": "string"}, "description": "Nama barang yang dipinjam"},
+                "start_date": {"type": "string", "description": "Tanggal mulai format YYYY-MM-DD"},
+                "start_time": {"type": "string", "description": "Jam mulai format HH:mm"},
+                "end_date": {"type": "string", "description": "Tanggal kembali format YYYY-MM-DD"},
+                "end_time": {"type": "string", "description": "Jam kembali format HH:mm"},
             },
-            "required": ["asset_name"],
+            "required": [],
         },
     },
     # 5. Tools Query Status & Statistik
@@ -102,7 +112,11 @@ TOOL_DEFINITIONS = [
 ]
 
 
-def get_gemini_tools() -> List[types.Tool]:
+def _definitions(drafts_only: bool) -> List[Dict[str, Any]]:
+    return [t for t in TOOL_DEFINITIONS if not drafts_only or t["name"].startswith("draft_")]
+
+
+def get_gemini_tools(drafts_only: bool = False) -> List[types.Tool]:
     """Mengubah definisi tool menjadi objek types.Tool yang dikenali oleh Gemini SDK."""
     declarations = [
         types.FunctionDeclaration(
@@ -110,11 +124,11 @@ def get_gemini_tools() -> List[types.Tool]:
             description=tool["description"],
             parameters=tool["parameters"],
         )
-        for tool in TOOL_DEFINITIONS
+        for tool in _definitions(drafts_only)
     ]
     return [types.Tool(function_declarations=declarations)]
 
-def get_openai_tools() -> List[Dict[str, Any]]:
+def get_openai_tools(drafts_only: bool = False) -> List[Dict[str, Any]]:
     """Mengubah definisi tool menjadi format OpenAI Function Calling (digunakan oleh Sumopod / DeepSeek)."""
     return [
         {
@@ -125,5 +139,5 @@ def get_openai_tools() -> List[Dict[str, Any]]:
                 "parameters": tool["parameters"],
             },
         }
-        for tool in TOOL_DEFINITIONS
+        for tool in _definitions(drafts_only)
     ]

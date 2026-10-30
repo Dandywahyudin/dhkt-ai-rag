@@ -25,7 +25,16 @@ class Ci4ToolClient:
         Kirim HTTP POST ke endpoint internal CodeIgniter 4:
         POST /internal/ai/tools/{tool_name}
         Dilengkapi dengan header otentikasi HMAC-SHA256.
+        Tool draft_* tidak dikirim ke CI4: argumennya dikembalikan ke CI4 sebagai `tool_call` pada
+        respons chat, dan CI4 sendiri yang menyiapkan form terisi.
         """
+        if tool_name.startswith("draft_"):
+            return {
+                "status": "draft_prepared",
+                "tool": tool_name,
+                "data": arguments or {},
+                "message": "Draf diteruskan ke aplikasi. Pengguna memeriksa dan melengkapi sisanya di form.",
+            }
         context = {
             "id": user_context.get("id") if user_context else 1,
             "role": user_context.get("role") if user_context else "staff",
@@ -86,14 +95,7 @@ class Ci4ToolClient:
         """
         Fallback simulasi lokal ketika server CodeIgniter belum aktif / sedang dalam tahap pengujian.
         """
-        if tool_name.startswith("draft_"):
-            return {
-                "status": "draft_prepared",
-                "tool": tool_name,
-                "data": arguments,
-                "message": f"Draf {tool_name} berhasil disiapkan.",
-            }
-        elif tool_name == "get_my_submission_status":
+        if tool_name == "get_my_submission_status":
             return {
                 "submission": {
                     "id": 101,

@@ -53,7 +53,8 @@ class Settings(BaseSettings):
     TOP_K_RESULTS: int = 2
     MIN_SIMILARITY_SCORE: float = 0.35
     MAX_OUTPUT_TOKENS: int = 1024
-    MAX_HISTORY_MESSAGES: int = 3
+    # Turns kept in the prompt; a form request often spans 4-6 turns. CI4 sends at most 12.
+    MAX_HISTORY_MESSAGES: int = 12
     ENABLE_COMPACT_PROMPT: bool = True
 
     model_config = SettingsConfigDict(

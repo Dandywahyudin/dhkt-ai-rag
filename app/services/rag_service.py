@@ -12,6 +12,9 @@ from .vector_store import get_vector_store
 
 logger = logging.getLogger("dhkt.rag")
 
+# Earlier user turns added to the retrieval query of a follow-up message.
+RETRIEVAL_USER_TURNS = 2
+
 
 def clean_markdown_and_footnotes(text: str) -> str:
     """
@@ -164,8 +167,11 @@ class RAGService:
         user_dict = user_context.model_dump() if user_context else {}
         user_role = user_dict.get("role")
 
-        # 1. Embed user query
-        query_embedding = await self.llm_service.generate_embedding(message)
+        # 1. Embed user query. A follow-up ("berapa lama?", "iya") is searched with the user's
+        #    previous turns so it finds the same SOP as the request it continues.
+        earlier_user_turns = [m.get("content", "") for m in (history or []) if m.get("role") == "user"]
+        retrieval_query = "\n".join(earlier_user_turns[-RETRIEVAL_USER_TURNS:] + [message])
+        query_embedding = await self.llm_service.generate_embedding(retrieval_query)
 
         # 2. Retrieve top matching chunks
         min_score = settings.MIN_SIMILARITY_SCORE if self.llm_service.is_configured else 0.0
@@ -224,6 +230,12 @@ class RAGService:
 
         clean_reply = clean_markdown_and_footnotes(reply)
 
+        # Draft tools reach CI4 as tool_call {name, arguments}; AssistantFormTools builds the form link.
+        tool_call = None
+        if tool_data and str(tool_data.get("form_type", "")).startswith("draft_"):
+            arguments = {k: v for k, v in tool_data.items() if k != "form_type"}
+            tool_call = {"name": tool_data["form_type"], "arguments": arguments}
+
         return ChatResponse(
             status="success",
             session_id=session_id,
@@ -231,6 +243,7 @@ class RAGService:
             sources=sources,
             tools_used=tools_called,
             form_data=form_data,
+            tool_call=tool_call,
         )
 
     def delete_document(self, document_id: Union[int, str]) -> Dict[str, Any]:

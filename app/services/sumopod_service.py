@@ -167,8 +167,9 @@ class SumopodService:
             {"role": "user", "content": prompt},
         ]
 
+        # Live data from CI4 replaces the get_* tools; draft tools stay so forms can still be prepared.
         has_live_data = bool(user_context and user_context.get("live_data"))
-        tools = get_openai_tools() if (enable_tools and settings.ENABLE_TOOL_CALLING and not has_live_data) else None
+        tools = get_openai_tools(drafts_only=has_live_data) if (enable_tools and settings.ENABLE_TOOL_CALLING) else None
 
         payload: Dict[str, Any] = {
             "model": self.chat_model,
@@ -186,12 +187,12 @@ class SumopodService:
                 if res.status_code != 200:
                     err_msg = res.text[:300]
                     logger.error(f"Sumopod chat error ({res.status_code}): {err_msg}")
-                    return f"Terjadi kendala saat menghubungi Sumopod DeepSeek API ({res.status_code}): {err_msg}", tools_called
+                    return f"Terjadi kendala saat menghubungi Sumopod DeepSeek API ({res.status_code}): {err_msg}", tools_called, None
 
                 resp_data = res.json()
                 choices = resp_data.get("choices", [])
                 if not choices:
-                    return "Maaf, tidak ada tanggapan teks yang dihasilkan oleh model DeepSeek.", tools_called
+                    return "Maaf, tidak ada tanggapan teks yang dihasilkan oleh model DeepSeek.", tools_called, None
 
                 choice_msg = choices[0].get("message", {})
                 tool_calls = choice_msg.get("tool_calls")

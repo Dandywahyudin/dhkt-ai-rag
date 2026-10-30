@@ -143,8 +143,9 @@ class GeminiService:
             from google.genai import types
 
             sys_inst = system_instruction or SYSTEM_PROMPT
+            # Live data from CI4 replaces the get_* tools; draft tools stay so forms can still be prepared.
             has_live_data = bool(user_context and user_context.get("live_data"))
-            tools = get_gemini_tools() if (enable_tools and settings.ENABLE_TOOL_CALLING and not has_live_data) else None
+            tools = get_gemini_tools(drafts_only=has_live_data) if (enable_tools and settings.ENABLE_TOOL_CALLING) else None
 
             config = types.GenerateContentConfig(
                 system_instruction=sys_inst,

@@ -1,6 +1,9 @@
 from typing import Any, Dict, List, Optional
 from .config import settings
 
+# Long assistant replies are cut; the details users give (object, place, date) fit well within this.
+HISTORY_MESSAGE_CHARS = 500
+
 SYSTEM_PROMPT = """Anda adalah asisten AI operasional resmi DHKT ITB.
 
 PEDOMAN UTAMA:
@@ -15,7 +18,13 @@ PEDOMAN UTAMA:
      -> Panggil Function/Tool yang relevan untuk mengekstrak data yang disebutkan.
      -> Berikan respons ramah bahwa draf pengajuan telah disiapkan.
 
-3. ATURAN FORMAT TEKS:
+3. KONTEKS PERCAKAPAN:
+   - Bagian "Riwayat" adalah percakapan sebelumnya dengan pengguna yang sama. Selalu baca Riwayat sebelum menjawab.
+   - Jawaban singkat seperti "iya", "ya", "boleh", "lanjut", atau tambahan data seperti "lokasinya di gedung X, tanggal Y" adalah kelanjutan permintaan sebelumnya. Jangan memulai percakapan baru atau menyapa ulang.
+   - Saat memanggil tool draf, isi argumennya dari SELURUH percakapan (Riwayat + pertanyaan terakhir), bukan hanya pesan terakhir. Jangan menanyakan ulang data yang sudah disebutkan.
+   - Jangan mengatakan draf telah disiapkan kecuali Anda benar-benar memanggil tool draf.
+
+4. ATURAN FORMAT TEKS:
    - DILARANG KERAS menggunakan tanda bintang Markdown (** atau *) untuk tebal/miring. Tulis dalam teks polos (plain text).
    - DILARANG menyertakan catatan kaki atau rujukan seperti "*(Sumber:...)*" di akhir teks. Metadata sumber dikelola oleh sistem secara terpisah.
 """
@@ -67,12 +76,12 @@ def build_rag_prompt(
     history_text = ""
     if history:
         history_lines = []
-        max_hist = getattr(settings, "MAX_HISTORY_MESSAGES", 3)
+        max_hist = getattr(settings, "MAX_HISTORY_MESSAGES", 12)
         for msg in history[-max_hist:]:
             role = "U" if msg.get("role") == "user" else "A"
             content = msg.get("content", "").strip()
-            if len(content) > 180:
-                content = content[:180] + "..."
+            if len(content) > HISTORY_MESSAGE_CHARS:
+                content = content[:HISTORY_MESSAGE_CHARS] + "..."
             history_lines.append(f"{role}: {content}")
         if history_lines:
             history_text = "Riwayat:\n" + "\n".join(history_lines) + "\n\n"

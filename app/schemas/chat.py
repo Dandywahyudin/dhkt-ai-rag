@@ -42,3 +42,4 @@ class ChatResponse(BaseModel):
     sources: List[SourceItem] = Field(default_factory=list)
     tools_used: List[str] = Field(default_factory=list, description="Daftar nama tool internal yang dipanggil oleh AI")
     form_data: Optional[Dict[str, Any]] = Field(default=None, description="Data form terstruktur yang diekstrak jika ada instruksi pengisian form")
+    tool_call: Optional[Dict[str, Any]] = Field(default=None, description="Tool draf yang dipanggil AI: {name, arguments}; CI4 mengubahnya menjadi form terisi")
