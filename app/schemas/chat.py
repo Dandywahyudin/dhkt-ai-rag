@@ -6,6 +6,12 @@ class UserContext(BaseModel):
     id: Optional[Union[int, str]] = None
     role: Optional[str] = "staff"
     unit: Optional[str] = None
+    active_module: Optional[str] = None
+    feature_key: Optional[str] = None
+    is_scoped: Optional[bool] = True
+    live_data: Optional[str] = None
+
+    model_config = {"extra": "allow"}
 
 
 class ChatMessage(BaseModel):
